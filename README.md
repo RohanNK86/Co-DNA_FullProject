@@ -28,20 +28,38 @@ CO-DNA is a VS Code extension that translates complex code smells into hard doll
 ## 🏗️ Architecture & Tech Stack
 
 * **Frontend / Editor Interface:** VS Code Extension API, TypeScript, React Webview, Tailwind CSS.
-* **Backend Engine:** Python 3.11, FastAPI, Python AST Module.
-* **AI / LLM:** Amazon Bedrock (Claude 3.7 Sonnet) via `boto3`.
+* **Backend Engine (this repo):** Node.js, Express (`debtsight-backend/`).
+* **AI / LLM:** Google Gemini (and related APIs) via the backend; Bedrock/Claude described above reflects the original hackathon stack.
 * **Storage (Future Scope):** Amazon DynamoDB for historical trend tracking.
 
 ---
 
 ## 💻 Local Setup & Installation (For Judges)
 
-To run CO-DNA locally, you need to start both the Python backend and the VS Code extension.
+To run CO-DNA locally, start the Node backend and load the VS Code extension from `co-dna/`.
 
-### 1. Start the AI Backend
-Navigate to the `backend` folder and start the FastAPI server:
+### 1. Start the DebtSight backend (Node)
+
 ```bash
-cd backend
-python -m venv .venv
-# Windows: .\.venv\Scripts\activate | Mac/Linux: source .venv/bin/activate
-pip install -r requirements.txt
+cd debtsight-backend
+npm install
+# Add API keys in .env as required by your setup, then:
+npm start
+```
+
+### 2. Build and run the VS Code extension
+
+```bash
+cd co-dna
+npm install
+npm run compile
+```
+
+Open `co-dna` in VS Code and press **F5** (Run Extension), or install the packaged `.vsix` if you build one.
+
+### Repository layout
+
+| Path | Purpose |
+|------|---------|
+| `debtsight-backend/` | REST API used by the extension |
+| `co-dna/` | VS Code extension (TypeScript + React webview) |
