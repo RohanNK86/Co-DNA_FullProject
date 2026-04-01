@@ -9,13 +9,19 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:co-dna.analyzeDebt"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "co-dna.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "co-dna.analyzeDebt",
+        "title": "DebtSight: Analyze Active File"
       }
     ]
   },

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DebtSight Demo</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <main class="container">
+    <h1>DebtSight</h1>
+    <p class="sub">AI-powered Technical Debt + Security Intelligence</p>
+
+    <section class="panel">
+      <label for="codeInput">Code Input</label>
+      <textarea id="codeInput" rows="14" placeholder="Paste code here..."></textarea>
+      <button id="analyzeBtn">Analyze Code</button>
+      <p id="status" class="status"></p>
+    </section>
+
+    <section class="grid">
+      <article class="card"><h3>Spaghetti Score</h3><p id="spaghettiScore">-</p></article>
+      <article class="card"><h3>Security Score</h3><p id="securityScore">-</p></article>
+      <article class="card"><h3>Risk Level</h3><p id="riskLevel">-</p></article>
+    </section>
+
+    <section class="panel">
+      <h2>Issues</h2>
+      <ul id="issuesList"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>Diagrams</h2>
+      <div class="tabs">
+        <button data-tab="arch">Architecture</button>
+        <button data-tab="fn">Function Flow</button>
+        <button data-tab="logic">Logic</button>
+      </div>
+      <div id="arch" class="mermaid"></div>
+      <div id="fn" class="mermaid hidden"></div>
+      <div id="logic" class="mermaid hidden"></div>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
+
