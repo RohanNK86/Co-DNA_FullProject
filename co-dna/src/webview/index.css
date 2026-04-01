@@ -1,0 +1,39 @@
+/* Base reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Disable default focus outline */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
+/* VS Code CSS variable aliases for convenience */
+:root {
+  --codna-accent: #f97316;
+  --codna-accent-dim: rgba(249, 115, 22, 0.12);
+  --codna-accent-border: rgba(249, 115, 22, 0.28);
+  --codna-radius-sm: 6px;
+  --codna-radius-md: 10px;
+  --codna-radius-lg: 14px;
+  --codna-gap: 10px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  background: transparent;
+  color: var(--vscode-foreground);
+}

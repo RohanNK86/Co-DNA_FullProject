@@ -1,87 +1,55 @@
 {
   "name": "co-dna",
-  "displayName": "Co-DNA 1.2",
-  "description": "DebtSight-powered technical debt analyzer: complexity, security, dependencies, tests, Mermaid diagrams, and prioritized remediation — wired to your DebtSight Node.js backend.",
-  "version": "1.2.0",
-  "publisher": "debtsight",
+  "displayName": "Co-DNA",
+  "description": "Co-DNA is an AI-powered VS Code extension that identifies, quantifies, and visualizes technical debt in real time.It analyzes code complexity, structure, and patterns to generate a  Score, flowcharts, and actionable insights.Developers can instantly understand messy code and follow a prioritized roadmap to improve quality and reduce maintenance cost.",
+  "version": "0.0.1",
   "engines": {
     "vscode": "^1.110.0"
   },
   "categories": [
-    "Linters",
     "Other"
   ],
-  "keywords": [
-    "technical debt",
-    "security",
-    "refactor",
-    "DebtSight",
-    "AI",
-    "mermaid",
-    "translate"
-  ],
   "activationEvents": [
-    "onCommand:co-dna.analyzeDebt",
-    "onCommand:co-dna.explainCode",
-    "onCommand:co-dna.modernizeCode",
-    "onCommand:co-dna.translateCode",
-    "onCommand:co-dna.rewriteCodebase"
+    "onView:codnaView"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
-      "title": "Co-DNA 1.2 (DebtSight)",
+      "title": "Co-DNA",
       "properties": {
         "co-dna.apiBaseUrl": {
           "type": "string",
           "default": "http://localhost:3000",
-          "description": "Single DebtSight backend base URL (no trailing slash). e.g. https://your-app.onrender.com"
-        },
-        "co-dna.modelLabel": {
-          "type": "string",
-          "default": "Gemini · DebtSight",
-          "description": "Shown in the analysis panel header (matches your backend AI)."
+          "description": "DebtSight backend base URL (no trailing slash). Same as Postman, e.g. https://your-app.onrender.com"
         }
       }
     },
     "commands": [
       {
-        "command": "co-dna.analyzeDebt",
-        "title": "Co-DNA 1.2: Analyze Technical Debt (DebtSight)",
-        "category": "DebtSight"
+        "command": "co-dna.helloWorld",
+        "title": "Hello World"
       },
       {
-        "command": "co-dna.explainCode",
-        "title": "Co-DNA 1.2: Explain Code",
-        "category": "DebtSight"
-      },
-      {
-        "command": "co-dna.modernizeCode",
-        "title": "Co-DNA 1.2: Modernize Code",
-        "category": "DebtSight"
-      },
-      {
-        "command": "co-dna.translateCode",
-        "title": "Co-DNA 1.2: Smart Translate + Language Advisor",
-        "category": "DebtSight"
-      },
-      {
-        "command": "co-dna.rewriteCodebase",
-        "title": "Co-DNA 1.2: Rewrite Codebase (AI)",
-        "category": "DebtSight"
+        "command": "co-dna.analyzeCurrentFile",
+        "title": "Co-DNA: Analyze current file",
+        "category": "Co-DNA"
       }
     ],
-    "menus": {
-      "editor/context": [
+    "viewsContainers": {
+      "activitybar": [
         {
-          "command": "co-dna.analyzeDebt",
-          "group": "navigation@1",
-          "when": "editorTextFocus"
-        },
+          "id": "codna-sidebar",
+          "title": "Co-DNA",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "codna-sidebar": [
         {
-          "command": "co-dna.translateCode",
-          "group": "navigation@2",
-          "when": "editorTextFocus"
+          "id": "codnaView",
+          "name": "Technical Debt",
+          "type": "webview"
         }
       ]
     }
@@ -101,15 +69,21 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.110.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "typescript-eslint": "^8.56.1",
-    "eslint": "^9.39.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/vscode": "^1.110.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
     "esbuild": "^0.27.3",
+    "eslint": "^9.39.3",
     "npm-run-all": "^4.1.5",
     "typescript": "^5.9.3",
-    "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2"
+    "typescript-eslint": "^8.56.1"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }
