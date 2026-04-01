@@ -25,10 +25,26 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
+/**
+ * Models often emit invalid Mermaid like "flowchart TD graph TD ..." (two diagram headers).
+ * Mermaid only allows one; the duplicate breaks rendering.
+ */
+function stripDuplicateMermaidHeaders(s) {
+  let t = String(s || "").trim();
+  const dup =
+    /^((?:flowchart|graph)\s+(?:TD|LR|RL|BT))\s+(?:(?:flowchart|graph)\s+(?:TD|LR|RL|BT))\s*/i;
+  let guard = 0;
+  while (dup.test(t) && guard++ < 8) {
+    t = t.replace(dup, "$1\n");
+  }
+  return t;
+}
+
 function normalizeMermaid(diagram) {
-  const s = String(diagram || "").trim();
+  let s = stripDuplicateMermaidHeaders(String(diagram || "").trim());
   if (!s) return "";
   if (/^flowchart\s+(TD|LR|RL|BT)\b/i.test(s)) return s;
+  if (/^graph\s+(TD|LR|RL|BT)\b/i.test(s)) return s;
   if (/^(TD|LR|RL|BT)\s*;/i.test(s)) return `flowchart ${s}`;
   return `flowchart TD\n${s}`;
 }

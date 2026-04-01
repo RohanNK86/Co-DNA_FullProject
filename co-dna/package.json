@@ -1,29 +1,78 @@
 {
   "name": "co-dna",
-  "displayName": "Co-DNA",
-  "description": "Co-DNA is an AI-powered VS Code extension that identifies, quantifies, and visualizes technical debt in real time.It analyzes code complexity, structure, and patterns to generate a  Score, flowcharts, and actionable insights.Developers can instantly understand messy code and follow a prioritized roadmap to improve quality and reduce maintenance cost.",
-  "version": "0.0.1",
+  "displayName": "Co-DNA 1.2",
+  "description": "DebtSight-powered technical debt analyzer: complexity, security, dependencies, tests, Mermaid diagrams, and prioritized remediation — wired to your DebtSight Node.js backend.",
+  "version": "1.2.0",
+  "publisher": "debtsight",
   "engines": {
     "vscode": "^1.110.0"
   },
   "categories": [
+    "Linters",
     "Other"
   ],
+  "keywords": [
+    "technical debt",
+    "security",
+    "refactor",
+    "DebtSight",
+    "AI",
+    "mermaid"
+  ],
   "activationEvents": [
-    "onCommand:co-dna.analyzeDebt"
+    "onCommand:co-dna.analyzeDebt",
+    "onCommand:co-dna.explainCode",
+    "onCommand:co-dna.modernizeCode",
+    "onCommand:co-dna.rewriteCodebase"
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Co-DNA 1.2 (DebtSight)",
+      "properties": {
+        "co-dna.apiBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "Single DebtSight backend base URL (no trailing slash). e.g. https://your-app.onrender.com"
+        },
+        "co-dna.modelLabel": {
+          "type": "string",
+          "default": "Gemini · DebtSight",
+          "description": "Shown in the analysis panel header (matches your backend AI)."
+        }
+      }
+    },
     "commands": [
       {
-        "command": "co-dna.helloWorld",
-        "title": "Hello World"
+        "command": "co-dna.analyzeDebt",
+        "title": "Co-DNA 1.2: Analyze Technical Debt (DebtSight)",
+        "category": "DebtSight"
       },
       {
-        "command": "co-dna.analyzeDebt",
-        "title": "DebtSight: Analyze Active File"
+        "command": "co-dna.explainCode",
+        "title": "Co-DNA 1.2: Explain Code",
+        "category": "DebtSight"
+      },
+      {
+        "command": "co-dna.modernizeCode",
+        "title": "Co-DNA 1.2: Modernize Code",
+        "category": "DebtSight"
+      },
+      {
+        "command": "co-dna.rewriteCodebase",
+        "title": "Co-DNA 1.2: Rewrite Codebase (AI)",
+        "category": "DebtSight"
       }
-    ]
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "co-dna.analyzeDebt",
+          "group": "navigation@1",
+          "when": "editorTextFocus"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

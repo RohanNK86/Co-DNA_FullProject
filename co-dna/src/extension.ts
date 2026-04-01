@@ -1,148 +1,185 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
+import { getApiBaseUrl, getModelLabel } from "./config";
+import {
+  analyzePanelHtml,
+  codePanelHtml,
+  errorHtml,
+  loadingHtml,
+  textPanelHtml,
+  type AnalyzePayload,
+} from "./webviewTemplates";
 
 export function activate(context: vscode.ExtensionContext) {
-	console.log('Congratulations, your extension "co-dna" is now active!');
+  console.log("Co-DNA 1.2 (DebtSight) is active.");
 
-	const hello = vscode.commands.registerCommand('co-dna.helloWorld', () => {
-		vscode.window.showInformationMessage('Hello World from Co-DNA!');
-	});
+  const analyze = vscode.commands.registerCommand("co-dna.analyzeDebt", async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage("Open a file first to analyze code.");
+      return;
+    }
+    const code = editor.document.getText();
+    if (!code.trim()) {
+      vscode.window.showErrorMessage("The active file is empty.");
+      return;
+    }
 
-	const analyze = vscode.commands.registerCommand('co-dna.analyzeDebt', async () => {
-		const editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			vscode.window.showErrorMessage('Open a file first to analyze code.');
-			return;
-		}
+    const base = getApiBaseUrl();
+    const modelLabel = getModelLabel();
+    const panel = vscode.window.createWebviewPanel(
+      "debtSightResult",
+      "Co-DNA 1.2 · DebtSight",
+      vscode.ViewColumn.Beside,
+      { enableScripts: true, retainContextWhenHidden: true }
+    );
+    const csp = panel.webview.cspSource;
+    panel.webview.html = loadingHtml(csp);
 
-		const code = editor.document.getText();
-		if (!code.trim()) {
-			vscode.window.showErrorMessage('The active file is empty.');
-			return;
-		}
+    try {
+      const response = await fetch(`${base}/analyze-debt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data: unknown = await response.json();
+      const obj = data as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(String(obj?.error ?? `Backend error (${response.status})`));
+      }
+      const payload = data as AnalyzePayload;
+      const expl = String(payload.explanation ?? "");
+      const aiPartial =
+        /limited|unavailable|fallback|partial|could not/i.test(expl) ||
+        ("ai_error" in obj && obj.ai_error !== undefined && obj.ai_error !== null);
+      panel.webview.html = analyzePanelHtml(csp, payload, modelLabel, { aiPartial });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      panel.webview.html = errorHtml(csp, msg, base);
+    }
+  });
 
-		const panel = vscode.window.createWebviewPanel(
-			'debtSightResult',
-			'DebtSight Analysis',
-			vscode.ViewColumn.Beside,
-			{ enableScripts: true }
-		);
+  const explain = vscode.commands.registerCommand("co-dna.explainCode", async () =>
+    runSimpleEndpoint("explain-code", "Explanation", (d) => String(d?.explanation ?? ""), "text")
+  );
 
-		panel.webview.html = loadingHtml();
+  const modernize = vscode.commands.registerCommand("co-dna.modernizeCode", async () =>
+    runSimpleEndpoint("modernize-code", "Modernized code", (d) => String(d?.modern_code ?? ""), "code")
+  );
 
-		try {
-			const response = await fetch('http://localhost:3000/analyze-debt', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ code }),
-			});
+  const rewrite = vscode.commands.registerCommand("co-dna.rewriteCodebase", async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage("Open a file first.");
+      return;
+    }
+    const code = editor.document.getText();
+    if (!code.trim()) {
+      vscode.window.showErrorMessage("The active file is empty.");
+      return;
+    }
+    const base = getApiBaseUrl();
+    const modelLabel = getModelLabel();
+    const docUri = editor.document.uri;
+    const panel = vscode.window.createWebviewPanel(
+      "coDnaRewrite",
+      "Co-DNA 1.2 · Rewrite",
+      vscode.ViewColumn.Beside,
+      { enableScripts: true, retainContextWhenHidden: true }
+    );
+    const csp = panel.webview.cspSource;
+    panel.webview.html = loadingHtml(csp, "Rewriting with AI…");
+    try {
+      const response = await fetch(`${base}/rewrite-codebase`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data: unknown = await response.json();
+      const obj = data as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(String(obj?.error ?? `Backend error (${response.status})`));
+      }
+      const rewritten = String(obj?.rewritten_code ?? "");
+      panel.webview.html = codePanelHtml(csp, "Rewritten code", rewritten, modelLabel, {
+        showReplace: true,
+      });
+      context.subscriptions.push(
+        panel.webview.onDidReceiveMessage(async (msg) => {
+          if (msg?.type !== "replaceEditor" || typeof msg.text !== "string") {
+            return;
+          }
+          const ed =
+            vscode.window.visibleTextEditors.find((e) => e.document.uri.toString() === docUri.toString()) ??
+            vscode.window.activeTextEditor;
+          if (!ed || ed.document.uri.toString() !== docUri.toString()) {
+            vscode.window.showWarningMessage("Open the original file to apply the rewrite.");
+            return;
+          }
+          const d = ed.document;
+          const full = new vscode.Range(d.positionAt(0), d.positionAt(d.getText().length));
+          const we = new vscode.WorkspaceEdit();
+          we.replace(d.uri, full, msg.text);
+          const ok = await vscode.workspace.applyEdit(we);
+          if (ok) {
+            vscode.window.showInformationMessage("Co-DNA: Replaced file contents.");
+          }
+        })
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      panel.webview.html = errorHtml(csp, msg, base);
+    }
+  });
 
-			const data: any = await response.json();
-			if (!response.ok) {
-				throw new Error(data?.error || `Backend error (${response.status})`);
-			}
+  context.subscriptions.push(analyze, explain, modernize, rewrite);
+}
 
-			panel.webview.html = resultHtml(data);
-		} catch (error) {
-			const msg = error instanceof Error ? error.message : String(error);
-			panel.webview.html = errorHtml(msg);
-		}
-	});
-
-	context.subscriptions.push(hello, analyze);
+async function runSimpleEndpoint(
+  path: string,
+  title: string,
+  extract: (d: Record<string, unknown>) => string,
+  mode: "text" | "code"
+): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    vscode.window.showErrorMessage("Open a file first.");
+    return;
+  }
+  const code = editor.document.getText();
+  if (!code.trim()) {
+    vscode.window.showErrorMessage("The active file is empty.");
+    return;
+  }
+  const base = getApiBaseUrl();
+  const modelLabel = getModelLabel();
+  const panel = vscode.window.createWebviewPanel(
+    "coDnaSimple",
+    `Co-DNA 1.2 · ${title}`,
+    vscode.ViewColumn.Beside,
+    { enableScripts: true, retainContextWhenHidden: true }
+  );
+  const csp = panel.webview.cspSource;
+  panel.webview.html = loadingHtml(csp, "Calling backend…");
+  try {
+    const response = await fetch(`${base}/${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    const data: unknown = await response.json();
+    const obj = data as Record<string, unknown>;
+    if (!response.ok) {
+      throw new Error(String(obj?.error ?? `Backend error (${response.status})`));
+    }
+    const body = extract(obj);
+    panel.webview.html =
+      mode === "code"
+        ? codePanelHtml(csp, title, body, modelLabel)
+        : textPanelHtml(csp, title, body, modelLabel);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    panel.webview.html = errorHtml(csp, msg, base);
+  }
 }
 
 export function deactivate() {}
-
-function esc(input: unknown): string {
-	const s = String(input ?? '');
-	return s
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-		.replaceAll('"', '&quot;')
-		.replaceAll("'", '&#39;');
-}
-
-function loadingHtml(): string {
-	return `<!doctype html>
-<html>
-<body style="font-family: sans-serif; padding:16px;">
-  <h2>DebtSight Analysis</h2>
-  <p>Analyzing code... ⏳</p>
-</body>
-</html>`;
-}
-
-function errorHtml(message: string): string {
-	return `<!doctype html>
-<html>
-<body style="font-family: sans-serif; padding:16px;">
-  <h2>DebtSight Analysis</h2>
-  <p style="color:#d32f2f;"><strong>Error:</strong> ${esc(message)}</p>
-  <p>Check backend on <code>http://localhost:3000</code>.</p>
-</body>
-</html>`;
-}
-
-function resultHtml(data: any): string {
-	const spaghetti = Number(data?.spaghetti_score ?? 0);
-	const security = Number(data?.security_score ?? 0);
-	const riskLevel = String(data?.risk_level ?? 'UNKNOWN');
-	const issues = Array.isArray(data?.issues) ? data.issues : [];
-	const logic = String(data?.logic_flow_diagram || data?.flowchart || '');
-	const arch = String(data?.architecture_diagram || '');
-	const fnFlow = String(data?.function_flow_diagram || '');
-
-	const issueList = issues
-		.slice(0, 8)
-		.map((i: any) => `<li><strong>${esc(i?.title)}</strong> (${esc(i?.severity)}): ${esc(i?.details)}</li>`)
-		.join('');
-
-	return `<!doctype html>
-<html>
-<head>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-  <style>
-    body { font-family: sans-serif; padding: 12px; color: #ddd; background: #1e1e1e; }
-    .grid { display:grid; grid-template-columns: repeat(3,minmax(140px,1fr)); gap:12px; }
-    .card { background:#2a2a2a; border-radius:8px; padding:10px; }
-    .risk-HIGH { color:#ff6b6b; } .risk-MEDIUM { color:#ffd166; } .risk-LOW { color:#4caf50; }
-    .tabs button { margin-right:8px; }
-    .hidden { display:none; }
-  </style>
-</head>
-<body>
-  <h2>DebtSight Analysis</h2>
-  <div class="grid">
-    <div class="card"><div>Spaghetti Score</div><h3>${esc(spaghetti)}</h3></div>
-    <div class="card"><div>Security Score</div><h3>${esc(security)}</h3></div>
-    <div class="card"><div>Risk</div><h3 class="risk-${esc(riskLevel)}">${esc(riskLevel)}</h3></div>
-  </div>
-
-  <h3>Top Issues</h3>
-  <ul>${issueList || '<li>No issues found.</li>'}</ul>
-
-  <div class="tabs">
-    <button onclick="showTab('arch')">Architecture</button>
-    <button onclick="showTab('fn')">Function Flow</button>
-    <button onclick="showTab('logic')">Logic</button>
-  </div>
-  <div id="arch" class="mermaid">${esc(arch)}</div>
-  <div id="fn" class="mermaid hidden">${esc(fnFlow)}</div>
-  <div id="logic" class="mermaid hidden">${esc(logic)}</div>
-
-  <script>
-    mermaid.initialize({ startOnLoad: true });
-    function showTab(id){
-      for (const k of ['arch','fn','logic']) {
-        const el = document.getElementById(k);
-        if (!el) continue;
-        el.classList.toggle('hidden', k !== id);
-      }
-      mermaid.init(undefined, document.querySelectorAll('.mermaid'));
-    }
-    mermaid.init(undefined, document.querySelectorAll('.mermaid'));
-  </script>
-</body>
-</html>`;
-}

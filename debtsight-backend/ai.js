@@ -34,6 +34,7 @@ Return this exact JSON shape:
 Rules:
 - issues must be specific, actionable, and consistent with the provided metrics.
 - For all diagrams: return ONLY Mermaid syntax strings, no backticks.
+- Each diagram string must start with exactly ONE diagram directive line — use either \`flowchart TD\` OR \`graph TD\` (or LR/RL/BT), never both in a row (invalid: \`flowchart TD graph TD\`).
 - Never represent code literally. Represent logic, structure, and meaning.
 - Use meaningful labels, not raw variable/code names.
 - Replace raw code terms:
