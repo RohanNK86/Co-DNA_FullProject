@@ -93,6 +93,15 @@ function normalizeKnownFields(obj, { endpoint }) {
     };
   }
 
+  if (endpoint === "translate-purpose") {
+    return {
+      purpose_category:
+        typeof obj.purpose_category === "string" ? obj.purpose_category : "unknown",
+      one_line_summary:
+        typeof obj.one_line_summary === "string" ? obj.one_line_summary : "",
+    };
+  }
+
   return obj;
 }
 

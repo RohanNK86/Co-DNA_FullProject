@@ -4,8 +4,17 @@ import {
   buildModernizeCodePrompt,
   buildRewriteCodebasePrompt,
   buildRewriteHardeningPrompt,
+  buildPurposeClassificationPrompt,
+  buildSimpleTranslatePrompt,
 } from "../ai.js";
-import { generateResponse } from "../services/geminiService.js";
+import { detectLanguage } from "../services/languageDetector.js";
+import {
+  normalizePurposeKey,
+  suggestBestLanguage,
+  resolveTargetLanguage,
+} from "../services/languageAdvisor.js";
+import { sanitizeTranslatedCode, stripCodeFences } from "../services/codeTranslator.js";
+import { generateResponse, generatePlainTextResponse } from "../services/geminiService.js";
 import { cleanAndParseJson } from "../utils/cleanJson.js";
 import { analyzeCodeStatic } from "../utils/staticAnalyzer.js";
 import { analyzeDependencies } from "../utils/dependencyAnalyzer.js";
@@ -354,6 +363,52 @@ export async function rewriteCodebase(req, res, next) {
     }
 
     res.status(200).json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function translateCode(req, res, next) {
+  try {
+    const code = requireCode(req);
+    const targetLanguageRaw = req?.body?.targetLanguage;
+
+    const detected = detectLanguage(code);
+
+    let purposeData = { purpose_category: "unknown", one_line_summary: "" };
+    try {
+      const purposePrompt = buildPurposeClassificationPrompt(code, detected);
+      const purposeText = await generateResponse(purposePrompt);
+      purposeData = cleanAndParseJson(purposeText, { endpoint: "translate-purpose" });
+      if (purposeData.parse_error) {
+        purposeData = { purpose_category: "unknown", one_line_summary: "" };
+      }
+    } catch {
+      purposeData = { purpose_category: "unknown", one_line_summary: "" };
+    }
+
+    const purposeKey = normalizePurposeKey(purposeData.purpose_category);
+    const suggested = suggestBestLanguage(purposeKey);
+    const translatedTo = resolveTargetLanguage(targetLanguageRaw, suggested);
+
+    const translatePrompt = buildSimpleTranslatePrompt(code, detected, translatedTo);
+    const rawText = await generatePlainTextResponse(translatePrompt);
+    let translated_code = sanitizeTranslatedCode(stripCodeFences(String(rawText || "").trim()));
+
+    if (!translated_code) {
+      return res.status(200).json({
+        detected_language: detected,
+        translated_to: translatedTo,
+        translated_code: `// AI unavailable - fallback response\n${code}`,
+        warning: "AI translation failed, showing fallback",
+      });
+    }
+
+    return res.status(200).json({
+      detected_language: detected,
+      translated_to: translatedTo,
+      translated_code,
+    });
   } catch (err) {
     next(err);
   }

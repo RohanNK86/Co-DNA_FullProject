@@ -339,6 +339,117 @@ pre{margin:0;padding:12px;background:var(--vscode-textCodeBlock-background);bord
 </body></html>`;
 }
 
+export interface TranslatePayload {
+  detected_language?: string;
+  translated_to?: string;
+  translated_code?: string;
+  /** Present when backend returned passthrough fallback (AI unavailable). */
+  warning?: string;
+  purpose?: string;
+  purpose_summary?: string;
+  suggested_language?: string;
+  why_this_language?: string;
+  comparison?: {
+    performance_gain?: string;
+    memory_efficiency?: string;
+    why?: string;
+  };
+  alternatives?: { Python?: string; Go?: string; Rust?: string };
+}
+
+export function translatePanelHtml(
+  cspSource: string,
+  data: TranslatePayload,
+  modelLabel: string,
+  options?: { showReplace?: boolean }
+): string {
+  const showReplace = Boolean(options?.showReplace);
+  const replaceBtn = showReplace
+    ? `<button type="button" id="replaceBtn" class="primary">Replace in editor</button>`
+    : "";
+  const alt = data.alternatives || {};
+  const altBlocks = ["Python", "Go", "Rust"]
+    .filter((k) => typeof alt[k as keyof typeof alt] === "string" && String(alt[k as keyof typeof alt]).trim())
+    .map(
+      (lang) =>
+        `<h3>${esc(lang)}</h3><pre class="block" data-lang="${esc(lang)}">${esc(
+          alt[lang as keyof typeof alt]
+        )}</pre>`
+    )
+    .join("");
+
+  const mainCode = String(data.translated_code ?? "");
+  const cmp = data.comparison || {};
+  const warn = data.warning ? `<div class="warn">${esc(data.warning)}</div>` : "";
+  const extraMeta =
+    data.purpose || data.suggested_language
+      ? `<div class="grid">
+    <div class="pill"><div class="k">Purpose (advisor)</div><div class="v">${esc(data.purpose ?? "—")}</div></div>
+    <div class="pill"><div class="k">Suggested</div><div class="v">${esc(data.suggested_language ?? "—")}</div></div>
+  </div>`
+      : "";
+  const legacyCompare =
+    cmp.performance_gain || cmp.memory_efficiency || cmp.why
+      ? `<div class="cmp">
+    <div class="pill"><div class="k">Performance</div><div class="v">${esc(cmp.performance_gain)}</div></div>
+    <div class="pill"><div class="k">Memory</div><div class="v">${esc(cmp.memory_efficiency)}</div></div>
+  </div>
+  <p class="prose">${esc(cmp.why)}</p>`
+      : "";
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="${esc(cspBlock(cspSource))}">
+<style>
+body{margin:0;font-family:var(--vscode-font-family);font-size:13px;background:var(--vscode-editor-background);color:var(--vscode-foreground);padding:12px;}
+.wrap{max-height:100vh;overflow:auto;}
+h2{margin:0 0 4px 0;font-size:15px;}
+h3{font-size:12px;margin:12px 0 6px 0;opacity:0.9;}
+.meta{opacity:0.8;font-size:11px;margin-bottom:10px;}
+.warn{margin-bottom:10px;padding:10px;border-radius:8px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.45);font-size:12px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.pill{background:var(--vscode-sideBar-background);border:1px solid var(--vscode-widget-border);border-radius:8px;padding:8px 10px;}
+.pill .k{font-size:10px;text-transform:uppercase;opacity:0.75;}
+.pill .v{margin-top:4px;font-weight:600;}
+.prose{line-height:1.45;margin:8px 0;padding:10px;background:var(--vscode-sideBar-background);border-radius:8px;border:1px solid var(--vscode-widget-border);}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+button{background:var(--vscode-button-secondaryBackground);color:var(--vscode-button-secondaryForeground);border:none;padding:6px 12px;border-radius:6px;cursor:pointer;}
+button.primary{background:var(--vscode-button-background);color:var(--vscode-button-foreground);}
+pre.block{margin:0 0 12px 0;padding:12px;background:var(--vscode-textCodeBlock-background);border-radius:8px;white-space:pre-wrap;word-break:break-word;max-height:45vh;overflow:auto;font-size:12px;}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;font-size:12px;}
+</style></head><body>
+<div class="wrap">
+  <h2>Smart translate · Code intelligence</h2>
+  <div class="meta">${esc(modelLabel)}</div>
+  ${warn}
+  <div class="grid">
+    <div class="pill"><div class="k">Detected</div><div class="v">${esc(data.detected_language)}</div></div>
+    <div class="pill"><div class="k">Translated to</div><div class="v">${esc(data.translated_to)}</div></div>
+  </div>
+  ${extraMeta}
+  ${data.purpose_summary ? `<p class="prose">${esc(data.purpose_summary)}</p>` : ""}
+  ${data.why_this_language ? `<p class="prose"><strong>Why this language:</strong> ${esc(data.why_this_language)}</p>` : ""}
+  ${legacyCompare}
+  <div class="toolbar">
+    <button type="button" id="copyBtn">Copy translated code</button>
+    ${replaceBtn}
+  </div>
+  <h3>Translated</h3>
+  <pre class="block" id="mainCode">${esc(mainCode)}</pre>
+  ${altBlocks}
+</div>
+<script>
+(function(){
+  const vscode = acquireVsCodeApi();
+  const text = ${JSON.stringify(mainCode)};
+  document.getElementById('copyBtn').addEventListener('click', () => navigator.clipboard.writeText(text));
+  const rb = document.getElementById('replaceBtn');
+  if (rb) rb.addEventListener('click', () => vscode.postMessage({ type: 'replaceEditor', text: text }));
+})();
+</script>
+</body></html>`;
+}
+
 export function textPanelHtml(
   cspSource: string,
   title: string,

@@ -6,8 +6,15 @@ import {
   errorHtml,
   loadingHtml,
   textPanelHtml,
+  translatePanelHtml,
   type AnalyzePayload,
+  type TranslatePayload,
 } from "./webviewTemplates";
+
+interface TranslateQuickPick extends vscode.QuickPickItem {
+  value: string;
+  multi: boolean;
+}
 
 export function activate(context: vscode.ExtensionContext) {
   console.log("Co-DNA 1.2 (DebtSight) is active.");
@@ -65,6 +72,103 @@ export function activate(context: vscode.ExtensionContext) {
   const modernize = vscode.commands.registerCommand("co-dna.modernizeCode", async () =>
     runSimpleEndpoint("modernize-code", "Modernized code", (d) => String(d?.modern_code ?? ""), "code")
   );
+
+  const translate = vscode.commands.registerCommand("co-dna.translateCode", async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage("Open a file first.");
+      return;
+    }
+    const code = editor.document.getText();
+    if (!code.trim()) {
+      vscode.window.showErrorMessage("The active file is empty.");
+      return;
+    }
+
+    const picks: TranslateQuickPick[] = [
+      {
+        label: "$(sparkle) Auto — AI-recommended language",
+        description: "Uses purpose + language advisor",
+        value: "auto",
+        multi: false,
+      },
+      { label: "Python", value: "Python", multi: false },
+      { label: "Go", value: "Go", multi: false },
+      { label: "Rust", value: "Rust", multi: false },
+      { label: "TypeScript", value: "TypeScript", multi: false },
+      { label: "JavaScript", value: "JavaScript", multi: false },
+      { label: "Java", value: "Java", multi: false },
+      { label: "C++", value: "C++", multi: false },
+      {
+        label: "$(package) Multi-language pack",
+        description: "Main translation + Python, Go, Rust snippets",
+        value: "auto",
+        multi: true,
+      },
+    ];
+
+    const choice = await vscode.window.showQuickPick(picks, {
+      placeHolder: "Translate: pick target language or Auto",
+    });
+    if (!choice) {
+      return;
+    }
+
+    const targetLanguage = choice.multi ? "" : choice.value === "auto" ? "" : choice.value;
+    const multi = choice.multi;
+
+    const base = getApiBaseUrl();
+    const modelLabel = getModelLabel();
+    const docUri = editor.document.uri;
+    const panel = vscode.window.createWebviewPanel(
+      "coDnaTranslate",
+      "Co-DNA · Smart translate",
+      vscode.ViewColumn.Beside,
+      { enableScripts: true, retainContextWhenHidden: true }
+    );
+    const csp = panel.webview.cspSource;
+    panel.webview.html = loadingHtml(csp, "Translating…");
+
+    try {
+      const response = await fetch(`${base}/translate-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, targetLanguage, multi }),
+      });
+      const data: unknown = await response.json();
+      const obj = data as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(String(obj?.error ?? `Backend error (${response.status})`));
+      }
+      const payload = data as TranslatePayload;
+      panel.webview.html = translatePanelHtml(csp, payload, modelLabel, { showReplace: true });
+      context.subscriptions.push(
+        panel.webview.onDidReceiveMessage(async (msg) => {
+          if (msg?.type !== "replaceEditor" || typeof msg.text !== "string") {
+            return;
+          }
+          const ed =
+            vscode.window.visibleTextEditors.find((e) => e.document.uri.toString() === docUri.toString()) ??
+            vscode.window.activeTextEditor;
+          if (!ed || ed.document.uri.toString() !== docUri.toString()) {
+            vscode.window.showWarningMessage("Open the original file to apply the translation.");
+            return;
+          }
+          const d = ed.document;
+          const full = new vscode.Range(d.positionAt(0), d.positionAt(d.getText().length));
+          const we = new vscode.WorkspaceEdit();
+          we.replace(d.uri, full, msg.text);
+          const ok = await vscode.workspace.applyEdit(we);
+          if (ok) {
+            vscode.window.showInformationMessage("Co-DNA: Replaced file with translated code.");
+          }
+        })
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      panel.webview.html = errorHtml(csp, msg, base);
+    }
+  });
 
   const rewrite = vscode.commands.registerCommand("co-dna.rewriteCodebase", async () => {
     const editor = vscode.window.activeTextEditor;
@@ -131,7 +235,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  context.subscriptions.push(analyze, explain, modernize, rewrite);
+  context.subscriptions.push(analyze, explain, modernize, translate, rewrite);
 }
 
 async function runSimpleEndpoint(

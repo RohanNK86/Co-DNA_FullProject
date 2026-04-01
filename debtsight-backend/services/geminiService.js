@@ -99,6 +99,20 @@ async function generateWithModel(modelName, prompt) {
   return response.text();
 }
 
+/** Plain text (no JSON mode) — for code translation and other non-structured outputs. */
+async function generateTextWithModel(modelName, prompt) {
+  const model = getClient().getGenerativeModel({
+    model: modelName,
+    generationConfig: {
+      temperature: Number(process.env.GEMINI_TEMPERATURE ?? 0.2),
+    },
+  });
+
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  return response.text();
+}
+
 let _client;
 function getClient() {
   if (_client) return _client;
@@ -133,6 +147,31 @@ export async function generateResponse(prompt) {
       flowchart: "",
       refactor_plan: [],
     });
+  }
+}
+
+/**
+ * Plain-text generation (no application/json MIME). Returns "" on total failure.
+ * Used by /translate-code stabilization path.
+ */
+export async function generatePlainTextResponse(prompt) {
+  if (typeof prompt !== "string" || prompt.trim().length === 0) {
+    return "";
+  }
+
+  try {
+    const primaryModel = getModelName();
+    try {
+      return await generateTextWithModel(primaryModel, prompt);
+    } catch (e) {
+      if (isModelNotFoundError(e)) {
+        const discovered = await discoverWorkingModel();
+        return await generateTextWithModel(discovered, prompt);
+      }
+      throw e;
+    }
+  } catch {
+    return "";
   }
 }
 

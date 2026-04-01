@@ -17,12 +17,14 @@
     "refactor",
     "DebtSight",
     "AI",
-    "mermaid"
+    "mermaid",
+    "translate"
   ],
   "activationEvents": [
     "onCommand:co-dna.analyzeDebt",
     "onCommand:co-dna.explainCode",
     "onCommand:co-dna.modernizeCode",
+    "onCommand:co-dna.translateCode",
     "onCommand:co-dna.rewriteCodebase"
   ],
   "main": "./dist/extension.js",
@@ -59,6 +61,11 @@
         "category": "DebtSight"
       },
       {
+        "command": "co-dna.translateCode",
+        "title": "Co-DNA 1.2: Smart Translate + Language Advisor",
+        "category": "DebtSight"
+      },
+      {
         "command": "co-dna.rewriteCodebase",
         "title": "Co-DNA 1.2: Rewrite Codebase (AI)",
         "category": "DebtSight"
@@ -69,6 +76,11 @@
         {
           "command": "co-dna.analyzeDebt",
           "group": "navigation@1",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "co-dna.translateCode",
+          "group": "navigation@2",
           "when": "editorTextFocus"
         }
       ]

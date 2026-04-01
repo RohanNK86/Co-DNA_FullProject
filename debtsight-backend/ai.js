@@ -183,3 +183,51 @@ Code to harden:
 """${code}"""
 `.trim();
 }
+
+export function buildPurposeClassificationPrompt(code, detectedLanguage) {
+  return `
+${commonRules}
+
+Task:
+Classify the PRIMARY purpose of the code using exactly one category value.
+
+Allowed purpose_category (pick one):
+- web_backend
+- data_processing
+- scripting
+- system_programming
+- ai_ml
+- api_handling
+- cli_tool
+- unknown
+
+Return this exact JSON shape:
+{
+  "purpose_category": "web_backend",
+  "one_line_summary": "what this code does in one short sentence"
+}
+
+Heuristic source language: ${detectedLanguage}
+
+Code:
+"""${code}"""
+`.trim();
+}
+
+/**
+ * Hackathon-stable translation: plain code only (no JSON). Parsed as raw text in the controller.
+ */
+export function buildSimpleTranslatePrompt(code, detectedLanguage, targetLanguage) {
+  return `
+Translate the following code from ${detectedLanguage} to ${targetLanguage}.
+
+Rules:
+- Return ONLY the translated code
+- Do NOT return JSON
+- Do NOT add explanations before or after the code
+- Do NOT use markdown code fences
+
+Code:
+"""${code}"""
+`.trim();
+}
