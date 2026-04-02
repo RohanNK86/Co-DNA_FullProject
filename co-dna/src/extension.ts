@@ -217,10 +217,14 @@ async function runAnalysis(
     provider.sendToWebview({ command: "analysisResult", data, mode, files });
 
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
+    let msg = err instanceof Error ? err.message : String(err);
+    if (msg === "fetch failed" || /failed to fetch/i.test(msg)) {
+      const base = getBackendUrl();
+      msg = `no response from ${base} (start DebtSight: terminal → cd debtsight-backend → npm start). Check VS Code Settings → Co-DNA → apiBaseUrl if you use another URL.`;
+    }
     provider.sendToWebview({
       command: "error",
-      message: `Analysis failed: ${msg}. Make sure the backend is running.`,
+      message: `Analysis failed: ${msg}`,
     });
   }
 }
