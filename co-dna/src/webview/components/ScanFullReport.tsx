@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { AnalysisResult, AttachedFile } from "../vscode";
+import { MermaidDiagram } from "./MermaidDiagram";
 
 type ScanSection =
   | "overview"
@@ -230,8 +231,8 @@ function MermaidBlock({ title, source }: { title: string; source: string }) {
   if (!t) return null;
   return (
     <Section title={title}>
-      <p style={st.hint}>Mermaid source — paste into <a href="https://mermaid.live" style={st.link}>mermaid.live</a> to render.</p>
-      <pre style={st.mermaidPre}>{t}</pre>
+      <p style={st.hint}>Rendered in the sidebar. Use “Show Mermaid source” to copy or debug.</p>
+      <MermaidDiagram source={t} />
     </Section>
   );
 }
@@ -891,19 +892,6 @@ const st: Record<string, React.CSSProperties> = {
   fixTitle: { fontSize: 12, fontWeight: 600, marginBottom: 6 },
   fixSteps: { fontSize: 11, paddingLeft: 18, lineHeight: 1.55 },
   hint: { fontSize: 10, opacity: 0.65, marginBottom: 4 },
-  link: { color: "#f97316" },
-  mermaidPre: {
-    fontSize: 10,
-    lineHeight: 1.5,
-    padding: "8px 10px",
-    background: "var(--vscode-textBlockQuote-background, #1e1e1e)",
-    border: "1px solid var(--vscode-panel-border, #333)",
-    borderRadius: 8,
-    overflowX: "auto" as const,
-    whiteSpace: "pre-wrap" as const,
-    wordBreak: "break-word" as const,
-    fontFamily: "var(--vscode-editor-font-family, monospace)",
-  },
   explanationBox: {
     background: "var(--vscode-editor-background)",
     border: "1px solid var(--vscode-panel-border, #333)",

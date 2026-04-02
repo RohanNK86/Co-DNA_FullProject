@@ -37,3 +37,9 @@ body,
   background: transparent;
   color: var(--vscode-foreground);
 }
+
+.co-dna-mermaid-host svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}

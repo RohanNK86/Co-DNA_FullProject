@@ -44,12 +44,14 @@ export class CoDNASidebarProvider implements vscode.WebviewViewProvider {
       vscode.Uri.joinPath(this._extensionUri, "dist", "webview.css")
     );
     const nonce = getNonce();
+    /** Mermaid (layout workers, optional WASM) needs blob workers + wasm eval in the webview. */
     const csp = [
       "default-src 'none';",
-      `script-src 'nonce-${nonce}';`,
+      `script-src 'nonce-${nonce}' 'wasm-unsafe-eval';`,
       `style-src ${webview.cspSource} 'unsafe-inline';`,
-      "font-src data:;",
-      "img-src data: https:;",
+      `font-src data: ${webview.cspSource} https:;`,
+      `img-src data: blob: https: ${webview.cspSource};`,
+      "worker-src blob:;",
     ].join(" ");
 
     return `<!DOCTYPE html>

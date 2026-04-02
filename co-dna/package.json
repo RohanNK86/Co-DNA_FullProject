@@ -83,6 +83,7 @@
     "typescript-eslint": "^8.56.1"
   },
   "dependencies": {
+    "mermaid": "^11.14.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
