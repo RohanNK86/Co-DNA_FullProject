@@ -4,12 +4,12 @@ import { Mode } from "../vscode";
 const CONFIG: Record<Mode, { icon: string; title: string; desc: string; steps: string[] }> = {
   scan: {
     icon: "⚡",
-    title: "Scan for Technical Debt",
-    desc: "Get scores, security issues, complexity metrics, diagrams & a full action roadmap.",
+    title: "Full technical-debt audit",
+    desc: "Same payload as Postman /analyze-debt: scores, duplication, tests, dependencies, security, threat intel, business impact, prioritized roadmap, Mermaid diagrams, and AI narrative — use the tabs in results.",
     steps: [
-      "Open any code file in the editor",
-      "Or attach files with the + button below",
-      "Hit send — results appear instantly",
+      "Open a file or attach code + package.json for dependency signals",
+      "Send — Overview shows scores & findings",
+      "Switch tabs: Roadmap, Dependencies, Security, Diagrams, AI insight",
     ],
   },
   explain: {

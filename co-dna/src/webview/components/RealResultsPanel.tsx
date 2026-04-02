@@ -1,5 +1,6 @@
 import React from "react";
 import { AnalysisResult, Mode, AttachedFile } from "../vscode";
+import { ScanFullReport } from "./ScanFullReport";
 
 interface Props {
   data: AnalysisResult;
@@ -7,192 +8,11 @@ interface Props {
   files: AttachedFile[];
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-const RISK_COLOR: Record<string, string> = {
-  LOW: "#22c55e",
-  MEDIUM: "#f59e0b",
-  HIGH: "#f97316",
-  CRITICAL: "#ef4444",
-};
-
-function scoreColor(score: number, inverted = false) {
-  // For spaghetti_score: lower is better (inverted)
-  // For security_score / complexity_score: higher is better
-  const pct = inverted ? 100 - score : score;
-  if (pct >= 75) return "#22c55e";
-  if (pct >= 50) return "#f59e0b";
-  return "#ef4444";
-}
-
-function ScoreRing({ label, value, total = 100, inverted = false }: {
-  label: string; value: number; total?: number; inverted?: boolean;
-}) {
-  const color = scoreColor(value, inverted);
-  return (
-    <div style={s.ring}>
-      <div style={{ ...s.ringCircle, borderColor: color }}>
-        <span style={{ ...s.ringNum, color }}>{value}</span>
-        <span style={s.ringTotal}>/{total}</span>
-      </div>
-      <span style={s.ringLabel}>{label}</span>
-    </div>
-  );
-}
-
-function MetricRow({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div style={s.metricRow}>
-      <span style={s.metricLabel}>{label}</span>
-      <span style={s.metricValue}>{value}</span>
-    </div>
-  );
-}
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={s.section}>
       <p style={s.sectionTitle}>{title}</p>
       {children}
-    </div>
-  );
-}
-
-// ── Scan Results ───────────────────────────────────────────────────────────
-function ScanResults({ data, files }: { data: AnalysisResult; files: AttachedFile[] }) {
-  const riskColor = RISK_COLOR[data.risk_level ?? "LOW"] ?? "#22c55e";
-  const cm = data.complexity_metrics;
-
-  // Build findings from API data or synthesise from scores
-  const findings = data.findings ?? data.debt_items ?? [];
-
-  return (
-    <div style={s.panel}>
-      {/* File context */}
-      {files.length > 0 && (
-        <div style={s.fileBar}>
-          {files.map((f) => (
-            <span key={f.name} style={s.fileChip}>📄 {f.name}</span>
-          ))}
-        </div>
-      )}
-
-      {/* Risk badge */}
-      <div style={{ ...s.riskBadge, background: riskColor + "20", borderColor: riskColor + "50", color: riskColor }}>
-        <span style={s.riskDot}>●</span>
-        Risk Level: <strong>{data.risk_level ?? "—"}</strong>
-      </div>
-
-      {/* Score rings */}
-      <Section title="Scores">
-        <div style={s.rings}>
-          {data.spaghetti_score !== undefined && (
-            <ScoreRing label="Spaghetti" value={data.spaghetti_score} inverted />
-          )}
-          {data.security_score !== undefined && (
-            <ScoreRing label="Security" value={data.security_score} />
-          )}
-          {data.complexity_score !== undefined && (
-            <ScoreRing label="Complexity" value={data.complexity_score} inverted />
-          )}
-        </div>
-      </Section>
-
-      {/* Complexity metrics */}
-      {cm && (
-        <Section title="Complexity Metrics">
-          <div style={s.card}>
-            {cm.lines_of_code !== undefined && (
-              <MetricRow label="Lines of Code" value={cm.lines_of_code} />
-            )}
-            {cm.number_of_functions !== undefined && (
-              <MetricRow label="Functions" value={cm.number_of_functions} />
-            )}
-            {cm.nesting_depth !== undefined && (
-              <MetricRow label="Max Nesting Depth" value={cm.nesting_depth} />
-            )}
-            {cm.cyclomatic_complexity !== undefined && (
-              <MetricRow label="Cyclomatic Complexity" value={cm.cyclomatic_complexity} />
-            )}
-          </div>
-        </Section>
-      )}
-
-      {/* Dollar impact if present */}
-      {data.dollar_impact && (
-        <div style={s.impactBanner}>
-          💸 Estimated impact: <strong>{data.dollar_impact}</strong>
-        </div>
-      )}
-
-      {/* Suggestions */}
-      {data.suggestions && data.suggestions.length > 0 && (
-        <Section title="Suggestions">
-          <div style={s.card}>
-            {data.suggestions.map((s_, i) => (
-              <div key={i} style={s.suggestionRow}>
-                <span style={s.bullet}>▸</span>
-                <span style={s.suggestionText}>{s_}</span>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Structured findings */}
-      {findings.length > 0 && (
-        <Section title={`${findings.length} Finding${findings.length !== 1 ? "s" : ""}`}>
-          {findings.map((f, i) => {
-            const sev = (f.severity ?? "medium").toLowerCase();
-            const color =
-              sev === "critical" ? "#ef4444" :
-              sev === "high" ? "#f97316" :
-              sev === "medium" ? "#f59e0b" : "#22c55e";
-            return (
-              <div key={i} style={{ ...s.findingCard, borderLeftColor: color }}>
-                <div style={s.findingHeader}>
-                  <span style={{ ...s.sevDot, color }}>{f.severity ?? "MEDIUM"}</span>
-                  {f.impact && <span style={{ ...s.impactTag, color, background: color + "18" }}>{f.impact}</span>}
-                </div>
-                {f.title && <p style={s.findingTitle}>{f.title}</p>}
-                {f.description && <p style={s.findingDesc}>{f.description}</p>}
-                {f.file && (
-                  <p style={s.findingFile}>
-                    📄 {f.file}{f.line ? `:${f.line}` : ""}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </Section>
-      )}
-
-      {/* Raw unknown fields — show as key/value if backend adds new fields */}
-      {(() => {
-        const knownKeys = new Set([
-          "spaghetti_score","security_score","risk_level","complexity_score",
-          "complexity_metrics","findings","debt_items","dollar_impact","suggestions",
-          "explanation","modernized_code","modern_code","rewritten_code",
-          "translated_code","translated_to","detected_language","warning",
-          "purpose","purpose_summary","suggested_language","why_this_language",
-          "comparison","alternatives","architecture_diagram","function_flow_diagram",
-          "logic_flow_diagram","flowchart","refactor_plan","business_impact",
-          "category_summary","prioritized_roadmap","prioritized_action_plan",
-          "security_analysis","dependency_analysis","test_coverage",
-        ]);
-        const extras = Object.entries(data).filter(([k]) => !knownKeys.has(k));
-        if (extras.length === 0) return null;
-        return (
-          <Section title="Additional Data">
-            <div style={s.card}>
-              {extras.map(([k, v]) => (
-                <MetricRow key={k} label={k} value={
-                  typeof v === "object" ? JSON.stringify(v) : String(v)
-                } />
-              ))}
-            </div>
-          </Section>
-        );
-      })()}
     </div>
   );
 }
@@ -316,7 +136,7 @@ export function RealResultsPanel({ data, mode, files }: Props) {
   if (mode === "modernize") return <ModernizeResults data={data} files={files} />;
   if (mode === "rewrite") return <RewriteResults data={data} files={files} />;
   if (mode === "translate") return <TranslateResults data={data} files={files} />;
-  return <ScanResults data={data} files={files} />;
+  return <ScanFullReport data={data} files={files} />;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────

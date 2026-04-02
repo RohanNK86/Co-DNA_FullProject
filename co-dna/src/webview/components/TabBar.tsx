@@ -6,12 +6,12 @@ interface TabBarProps {
   onChange: (mode: Mode) => void;
 }
 
-const TABS: { id: Mode; label: string; icon: string }[] = [
-  { id: "scan", label: "Scan", icon: "⚡" },
-  { id: "explain", label: "Explain", icon: "💬" },
-  { id: "modernize", label: "Modernize", icon: "✨" },
-  { id: "rewrite", label: "Rewrite", icon: "🔄" },
-  { id: "translate", label: "Translate", icon: "🌐" },
+const TABS: { id: Mode; label: string; icon: string; hint: string }[] = [
+  { id: "scan", label: "Scan", icon: "⚡", hint: "Full audit: roadmap, deps, security, diagrams (same as /analyze-debt)" },
+  { id: "explain", label: "Explain", icon: "💬", hint: "Plain-English explanation (/explain-code)" },
+  { id: "modernize", label: "Modernize", icon: "✨", hint: "Modernize patterns (/modernize-code)" },
+  { id: "rewrite", label: "Rewrite", icon: "🔄", hint: "AI codebase rewrite (/rewrite-codebase)" },
+  { id: "translate", label: "Translate", icon: "🌐", hint: "Translate + language advisor (/translate-code)" },
 ];
 
 export function TabBar({ active, onChange }: TabBarProps) {
@@ -25,7 +25,7 @@ export function TabBar({ active, onChange }: TabBarProps) {
             ...(active === t.id ? styles.tabActive : {}),
           }}
           onClick={() => onChange(t.id)}
-          title={t.label}
+          title={t.hint}
         >
           <span style={styles.tabIcon}>{t.icon}</span>
           <span style={styles.tabLabel}>{t.label}</span>
