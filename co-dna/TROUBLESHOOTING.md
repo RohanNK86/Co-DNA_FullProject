@@ -4,6 +4,14 @@
 
 Those files are **published by Microsoft** and should be complete. If the compiler points *inside* `lib.decorators.d.ts` (or similar) with a parse error, the install is almost always **corrupted on disk**, not a bug in your `src/` code.
 
+On Windows, the broken file sometimes still has the **correct total size** but line 100 (or another line) is padded with **NUL (`\0`) bytes** inside a comment — TypeScript then reports **`*/` expected** (TS1010). **Reinstall only TypeScript** (fastest fix):
+
+```powershell
+Remove-Item -Recurse -Force node_modules\typescript
+npm install typescript@5.9.3 --save-exact
+npm run compile
+```
+
 ### Why this keeps coming back
 
 1. **Cloud‑synced project folders** (iCloud Drive, Dropbox, OneDrive, Google Drive) — they can partially sync or “merge” thousands of small files under `node_modules` and leave **truncated** files.
